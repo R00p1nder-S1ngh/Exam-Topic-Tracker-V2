@@ -1,0 +1,1701 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Exam Topic Tracker & AI Assistant</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <meta name="theme-color" content="#0f172a" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  
+  <!-- Import Gemini API SDK dari Google CDN -->
+  <script type="importmap">
+    {
+      "imports": {
+        "@google/genai": "https://esm.run/@google/genai"
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+      --card-bg: rgba(30, 41, 59, 0.7);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --card-hover-border: rgba(99, 102, 241, 0.5);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-purple: #818cf8;
+      --accent-indigo: #6366f1;
+      --accent-glow: rgba(99, 102, 241, 0.25);
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+
+      /* Dark Theme: Streak Api Biru & WA Biru */
+      --streak-color: #38bdf8;
+      --streak-bg: rgba(56, 189, 248, 0.12);
+      --streak-border: rgba(56, 189, 248, 0.35);
+      --streak-glow: rgba(56, 189, 248, 0.3);
+      --flame-filter: hue-rotate(190deg) saturate(300%) brightness(1.2);
+      --wa-color: #38bdf8;
+      --wa-glow: rgba(56, 189, 248, 0.3);
+    }
+
+    .light-mode {
+      --bg-gradient: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+      --card-bg: rgba(255, 255, 255, 0.85);
+      --card-border: rgba(0, 0, 0, 0.08);
+      --card-hover-border: rgba(99, 102, 241, 0.6);
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --accent-purple: #4f46e5;
+      --accent-indigo: #6366f1;
+      --accent-glow: rgba(99, 102, 241, 0.15);
+
+      /* Light Theme: Streak Api Merah & WA Hijau Khas */
+      --streak-color: #ef4444;
+      --streak-bg: rgba(239, 68, 68, 0.12);
+      --streak-border: rgba(239, 68, 68, 0.35);
+      --streak-glow: rgba(239, 68, 68, 0.2);
+      --flame-filter: none;
+      --wa-color: #25D366;
+      --wa-glow: rgba(37, 211, 102, 0.3);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      transition: background-color 0.3s, border-color 0.3s, color 0.3s, transform 0.2s, box-shadow 0.2s;
+    }
+
+    body {
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1080px;
+      flex: 1;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2.5rem;
+    }
+
+    .logo-area {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .logo-icon {
+      width: 42px;
+      height: 42px;
+      background: linear-gradient(135deg, var(--accent-indigo), var(--accent-purple));
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      box-shadow: 0 4px 15px var(--accent-glow);
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      background: linear-gradient(to right, var(--text-main), var(--accent-purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .streak-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      background: var(--streak-bg);
+      border: 1px solid var(--streak-border);
+      padding: 0.45rem 0.85rem;
+      border-radius: 12px;
+      color: var(--streak-color);
+      font-size: 0.88rem;
+      font-weight: 700;
+      backdrop-filter: blur(10px);
+      user-select: none;
+      box-shadow: 0 0 12px var(--streak-glow);
+    }
+
+    .flame-icon {
+      font-size: 1.1rem;
+      display: inline-block;
+      filter: var(--flame-filter);
+      transition: filter 0.3s ease;
+    }
+
+    .user-profile-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      padding: 0.4rem 0.8rem;
+      border-radius: 12px;
+      cursor: pointer;
+      color: var(--text-main);
+      font-size: 0.85rem;
+      font-weight: 600;
+      backdrop-filter: blur(10px);
+    }
+
+    .user-profile-btn:hover {
+      border-color: var(--accent-indigo);
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+
+    .avatar {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent-indigo), var(--accent-purple));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: white;
+    }
+
+    .settings-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      backdrop-filter: blur(10px);
+      text-decoration: none;
+    }
+
+    .settings-btn:hover {
+      border-color: var(--accent-indigo);
+      transform: translateY(-2px);
+    }
+
+    /* Tombol WhatsApp Ringkas di Header */
+    .wa-btn-header {
+      border-color: var(--wa-color);
+      color: var(--wa-color);
+    }
+
+    .wa-btn-header:hover {
+      border-color: var(--wa-color);
+      box-shadow: 0 0 12px var(--wa-glow);
+    }
+
+    .wa-icon-svg {
+      width: 20px;
+      height: 20px;
+      fill: currentColor;
+    }
+
+    .controls-center {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      align-items: center;
+    }
+
+    .search-wrapper {
+      flex: 1;
+      position: relative;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 0.85rem 1.2rem 0.85rem 2.8rem;
+      border-radius: 14px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      font-size: 0.95rem;
+      outline: none;
+      backdrop-filter: blur(10px);
+    }
+
+    .search-input:focus {
+      border-color: var(--accent-indigo);
+      box-shadow: 0 0 15px var(--accent-glow);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: 1rem;
+    }
+
+    .btn-add-group {
+      background: linear-gradient(135deg, var(--accent-indigo), var(--accent-purple));
+      color: white;
+      border: none;
+      padding: 0.85rem 1.4rem;
+      border-radius: 14px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      box-shadow: 0 4px 15px var(--accent-glow);
+      white-space: nowrap;
+    }
+
+    .btn-add-group:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px var(--accent-glow);
+    }
+
+    .group-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .group-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 1.25rem;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .group-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--card-hover-border);
+      box-shadow: 0 12px 30px var(--accent-glow);
+    }
+
+    .group-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.8rem;
+    }
+
+    .group-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .group-stats-text {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 0.2rem;
+    }
+
+    .exam-badge {
+      font-size: 0.72rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 8px;
+      background: rgba(99, 102, 241, 0.15);
+      color: var(--accent-purple);
+      font-weight: 600;
+      display: inline-block;
+      margin-top: 0.4rem;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 0.4rem;
+      opacity: 0.5;
+    }
+
+    .group-card:hover .card-actions {
+      opacity: 1;
+    }
+
+    .icon-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.9rem;
+      padding: 0.2rem 0.4rem;
+      border-radius: 6px;
+    }
+
+    .icon-btn:hover {
+      color: var(--danger);
+      background: rgba(248, 113, 113, 0.1);
+    }
+
+    .progress-container {
+      margin-top: 0.5rem;
+      user-select: none;
+    }
+
+    .progress-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 0.4rem;
+    }
+
+    .progress-hint {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    .progress-bar-bg {
+      height: 12px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      overflow: hidden;
+      position: relative;
+      cursor: ew-resize;
+      touch-action: none;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent-indigo), var(--streak-color));
+      border-radius: 10px;
+      width: 0%;
+      pointer-events: none;
+      transition: width 0.1s ease-out;
+    }
+
+    .detail-view {
+      display: none;
+    }
+
+    .back-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 0.6rem 1.2rem;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .back-btn:hover {
+      border-color: var(--accent-indigo);
+    }
+
+    .detail-header {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .add-topic-box {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1rem;
+      width: 100%;
+    }
+
+    .topic-input, .select-diff, .auth-input {
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      background: rgba(0,0,0,0.2);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      outline: none;
+    }
+
+    .topic-input { flex: 1; }
+    .select-diff { background: var(--card-bg); }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-indigo), var(--accent-purple));
+      color: white;
+      border: none;
+      padding: 0.75rem 1.2rem;
+      border-radius: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 15px var(--accent-glow);
+    }
+
+    .pomodoro-box {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: rgba(0,0,0,0.25);
+      padding: 0.6rem 1rem;
+      border-radius: 16px;
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(10px);
+      flex-wrap: wrap;
+    }
+
+    .pomo-time {
+      font-weight: 800;
+      font-size: 1.25rem;
+      color: var(--streak-color);
+      font-family: monospace;
+      letter-spacing: 1px;
+    }
+
+    .pomo-btn {
+      background: var(--accent-indigo);
+      border: none;
+      color: white;
+      padding: 0.4rem 0.85rem;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .pomo-btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 0.4rem 0.65rem;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .pomo-btn-secondary:hover {
+      border-color: var(--accent-indigo);
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .files-section {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .files-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .btn-upload {
+      background: rgba(99, 102, 241, 0.2);
+      border: 1px dashed var(--accent-purple);
+      color: var(--text-main);
+      padding: 0.5rem 1rem;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .btn-upload:hover {
+      background: rgba(99, 102, 241, 0.35);
+    }
+
+    .file-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 1rem;
+    }
+
+    .file-card {
+      background: rgba(0,0,0,0.25);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 0.5rem;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .file-thumb {
+      width: 100%;
+      height: 90px;
+      border-radius: 8px;
+      object-fit: cover;
+      margin-bottom: 0.4rem;
+      cursor: pointer;
+    }
+
+    .file-icon {
+      width: 100%;
+      height: 90px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      margin-bottom: 0.4rem;
+      cursor: pointer;
+    }
+
+    .file-name {
+      font-size: 0.72rem;
+      color: var(--text-main);
+      word-break: break-all;
+      line-height: 1.2;
+      max-height: 2.4em;
+      overflow: hidden;
+    }
+
+    .file-del {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      background: rgba(248, 113, 113, 0.85);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      font-size: 0.7rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .topic-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .topic-item {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 1rem 1.2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .topic-left {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .diff-badge {
+      font-size: 0.68rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .diff-easy { background: rgba(52, 211, 153, 0.15); color: var(--success); }
+    .diff-medium { background: rgba(251, 191, 36, 0.15); color: var(--warning); }
+    .diff-hard { background: rgba(248, 113, 113, 0.15); color: var(--danger); }
+
+    .topic-status {
+      padding: 0.3rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .status-learning { background: rgba(251, 191, 36, 0.15); color: var(--warning); }
+    .status-reviewing { background: rgba(129, 140, 248, 0.15); color: var(--accent-purple); }
+    .status-mastered { background: rgba(52, 211, 153, 0.15); color: var(--success); }
+
+    /* Floating AI Widget & Chat Modal */
+    .ai-widget {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: linear-gradient(135deg, var(--accent-indigo), var(--accent-purple));
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      color: white;
+      cursor: pointer;
+      box-shadow: 0 8px 25px var(--accent-glow);
+      z-index: 90;
+    }
+
+    .ai-chat-box {
+      display: none;
+      position: fixed;
+      bottom: 5.5rem;
+      right: 2rem;
+      width: 360px;
+      max-width: calc(100vw - 3rem);
+      height: 480px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+      backdrop-filter: blur(16px);
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 95;
+    }
+
+    .ai-chat-header {
+      background: linear-gradient(135deg, var(--accent-indigo), var(--accent-purple));
+      padding: 0.85rem 1.2rem;
+      color: white;
+      font-weight: 700;
+      font-size: 0.95rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .ai-chat-messages {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      font-size: 0.85rem;
+    }
+
+    .msg-bubble {
+      padding: 0.65rem 0.9rem;
+      border-radius: 12px;
+      max-width: 85%;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+
+    .msg-user {
+      align-self: flex-end;
+      background: var(--accent-indigo);
+      color: white;
+    }
+
+    .msg-ai {
+      align-self: flex-start;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+    }
+
+    .ai-chat-input-area {
+      padding: 0.75rem;
+      border-top: 1px solid var(--card-border);
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .toast-container {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      z-index: 200;
+      pointer-events: none;
+    }
+
+    .toast-pop {
+      pointer-events: auto;
+      background: rgba(30, 41, 59, 0.92);
+      border: 1px solid var(--streak-color);
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5), 0 0 20px var(--streak-glow);
+      backdrop-filter: blur(16px);
+      padding: 1rem 1.25rem;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      min-width: 300px;
+      max-width: 380px;
+      transform: translateX(120%);
+      opacity: 0;
+      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+    }
+
+    .toast-pop.show {
+      transform: translateX(0);
+      opacity: 1;
+    }
+
+    .toast-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent-indigo), var(--streak-color));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      flex-shrink: 0;
+    }
+
+    .toast-body {
+      flex: 1;
+    }
+
+    .toast-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .toast-desc {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 0.15rem;
+      line-height: 1.3;
+    }
+
+    .toast-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    .toast-close:hover {
+      color: var(--text-main);
+    }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(12px);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      padding: 2rem;
+      width: 90%;
+      max-width: 440px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+      text-align: center;
+    }
+
+    .auth-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-top: 1.2rem;
+      text-align: left;
+    }
+
+    footer {
+      width: 100%;
+      text-align: center;
+      padding: 2rem 0 0.5rem 0;
+      margin-top: auto;
+    }
+
+    .watermark-text {
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      background: linear-gradient(90deg, var(--text-muted), var(--streak-color));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      opacity: 0.45;
+      user-select: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .watermark-text:hover {
+      opacity: 0.85;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="logo-area">
+        <div class="logo-icon">📚</div>
+        <h1>Topic Tracker</h1>
+      </div>
+      <div class="header-actions">
+        <div class="streak-badge" title="Lakukan sesi belajar min. 25 menit untuk menaikkan streak!">
+          <span class="flame-icon">🔥</span>
+          <span id="streakDisplay">0 Hari</span>
+        </div>
+
+        <button class="user-profile-btn" id="authBtn" onclick="openAuthModal()">
+          <div class="avatar" id="userAvatar">?</div>
+          <span id="userNameText">Sign In</span>
+        </button>
+
+        <button class="settings-btn" onclick="exportData()" title="Backup Data (Export)">💾</button>
+        
+        <!-- Logo WhatsApp Ringkas Baru di sebelah tombol Tema -->
+        <a href="https://wa.me/6282371543358" target="_blank" class="settings-btn wa-btn-header" title="Hubungi Servis WhatsApp (+6282371543358)">
+          <svg class="wa-icon-svg" viewBox="0 0 24 24">
+            <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.964 9.964 0 001.333 4.993L2 22l5.233-1.237a9.92 9.92 0 004.779 1.221h.004c5.505 0 9.988-4.478 9.989-9.985 0-2.667-1.037-5.176-2.922-7.062A9.924 9.924 0 0012.012 2zm0 1.8c4.512 0 8.188 3.676 8.189 8.184 0 2.188-.852 4.246-2.4 5.793a8.134 8.134 0 01-5.789 2.392h-.003a8.12 8.12 0 01-3.921-1.002l-.281-.167-2.912.689.702-2.837-.183-.292a8.163 8.163 0 01-1.092-4.092c.001-4.508 3.677-8.184 8.19-8.184zm-3.52 4.507c-.196 0-.425.074-.648.316-.223.242-.852.833-.852 2.031 0 1.199.873 2.356.995 2.52.122.164 1.72 2.628 4.167 3.684.582.251 1.037.401 1.391.514.584.186 1.116.159 1.536.097.469-.07 1.442-.59 1.645-1.16.203-.57.203-1.059.142-1.16-.061-.101-.223-.164-.469-.287-.246-.123-1.458-.72-1.685-.802-.227-.082-.393-.123-.559.123-.166.246-.648.802-.795.966-.147.164-.294.185-.54.062-.246-.123-1.038-.383-1.977-1.22-.731-.652-1.225-1.458-1.368-1.704-.143-.246-.015-.379.108-.501.111-.11.246-.287.369-.431.123-.144.164-.246.246-.41.082-.164.041-.308-.02-.431-.061-.123-.559-1.348-.766-1.845-.202-.485-.407-.419-.559-.427-.143-.008-.308-.01-.473-.01z"/>
+          </svg>
+        </a>
+
+        <button class="settings-btn" id="toggleTheme" title="Ganti Tema">⚙️</button>
+      </div>
+    </header>
+
+    <!-- DASHBOARD VIEW -->
+    <div id="dashboardView">
+      <div class="controls-center">
+        <div class="search-wrapper">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="search-input" id="searchInput" placeholder="Cari mata pelajaran atau topik..." oninput="renderDashboard()">
+        </div>
+        <button class="btn-add-group" onclick="addNewGroup()">+ Group Baru</button>
+      </div>
+
+      <div class="group-grid" id="groupGrid">
+        <!-- Group cards rendered here -->
+      </div>
+    </div>
+
+    <!-- DETAIL VIEW -->
+    <div id="detailView" class="detail-view">
+      <button class="back-btn" onclick="showDashboard()">← Kembali ke Dashboard</button>
+      
+      <div class="detail-header">
+        <div>
+          <h2 id="detailGroupTitle">Mata Pelajaran</h2>
+          <div id="examDateDisplay" class="exam-badge">Ujian: Belum diatur</div>
+        </div>
+
+        <!-- Timer Pomodoro Interaktif -->
+        <div class="pomodoro-box">
+          <span>⏱️ Focus:</span>
+          <span class="pomo-time" id="pomoTimer">25:00</span>
+          <button class="pomo-btn" id="pomoBtn" onclick="togglePomodoro()">Start</button>
+          <button class="pomo-btn-secondary" onclick="resetPomodoro()" title="Reset Timer">🔄</button>
+          <button class="pomo-btn-secondary" onclick="customizePomodoroTime()" title="Atur Waktu">⚙️</button>
+        </div>
+
+        <div class="add-topic-box">
+          <input type="text" id="newTopicInput" class="topic-input" placeholder="Tambah topik materi baru...">
+          <select id="newTopicDiff" class="select-diff">
+            <option value="easy">Mudah</option>
+            <option value="medium" selected>Sedang</option>
+            <option value="hard">Sangat Sulit</option>
+          </select>
+          <button class="btn-primary" onclick="addTopic()">Tambah Topik</button>
+        </div>
+      </div>
+
+      <!-- FILE UPLOAD & PREVIEW SECTION -->
+      <div class="files-section">
+        <div class="files-header">
+          <h3 style="font-size: 1rem; font-weight: 700;">📄 Lampiran / Soal & Catatan</h3>
+          <label class="btn-upload">
+            📷 Upload Foto / File Soal
+            <input type="file" id="fileInput" accept="image/*,.pdf" style="display: none;" onchange="handleFileUpload(event)">
+          </label>
+        </div>
+        <div class="file-grid" id="fileGrid">
+          <!-- Uploaded files will show here -->
+        </div>
+      </div>
+
+      <div class="topic-list" id="topicList">
+        <!-- Topik rendered here -->
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- SIGN IN & API KEY MODAL -->
+  <div class="modal-overlay" id="authModal">
+    <div class="modal-card" style="text-align: left;">
+      <h3 style="font-size: 1.3rem;">🔑 Profil & Gemini API Key</h3>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.3rem;">Masukan nama Anda dan Gemini API Key untuk mengaktifkan AI Assistant.</p>
+      
+      <div class="auth-form">
+        <input type="text" id="authNameInput" class="auth-input" placeholder="Nama Lengkap / Username">
+        <input type="email" id="authEmailInput" class="auth-input" placeholder="Email (opsional)">
+        <input type="password" id="authApiKeyInput" class="auth-input" placeholder="Gemini API Key (AIzaSy...)">
+        <button class="btn-primary" onclick="handleSignIn()">Masuk & Simpan API Key</button>
+        <button id="logoutBtn" class="icon-btn" style="color: var(--danger); font-weight: 600; display: none;" onclick="handleSignOut()">Keluar dari Akun</button>
+      </div>
+      <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
+        <button class="icon-btn" onclick="closeAuthModal()">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Quiz Assistant Modal -->
+  <div class="modal-overlay" id="aiModal">
+    <div class="modal-card" style="text-align: left;">
+      <h3 style="margin-bottom: 0.5rem;">✨ AI Quiz Generator</h3>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">Kuis kilat otomatis dibuat oleh Gemini AI.</p>
+      <div id="aiQuizContent" style="font-size: 0.95rem; margin-bottom: 1.5rem; line-height: 1.5;">
+        Membuat soal...
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+        <button class="btn-primary" onclick="closeAIModal()">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chatbot AI Window -->
+  <div class="ai-chat-box" id="aiChatBox">
+    <div class="ai-chat-header">
+      <span>✨ Gemini Study Assistant</span>
+      <button class="icon-btn" style="color: white;" onclick="toggleAIChat()">✕</button>
+    </div>
+    <div class="ai-chat-messages" id="aiChatMessages">
+      <div class="msg-bubble msg-ai">Halo! Saya asisten Gemini AI kamu. Ada materi ujian yang mau ditanyakan atau didiskusikan?</div>
+    </div>
+    <div class="ai-chat-input-area">
+      <input type="text" id="aiChatInput" class="topic-input" style="font-size:0.85rem;" placeholder="Tanya sesuatu tentang materi ujian..." onkeydown="if(event.key==='Enter') sendAIMessage()">
+      <button class="btn-primary" style="padding:0.6rem 0.9rem;" onclick="sendAIMessage()">Kirim</button>
+    </div>
+  </div>
+
+  <div class="ai-widget" title="AI Assistant Chat" onclick="toggleAIChat()">✨</div>
+
+  <footer>
+    <div class="watermark-text">Made by Roopinder Singh</div>
+  </footer>
+
+  <!-- Module Script untuk Gemini API -->
+  <script type="module">
+    import { GoogleGenAI } from '@google/genai';
+
+    // Global Functions & States Attached to Window Object
+    window.GoogleGenAI = GoogleGenAI;
+
+    // Helper untuk inisialisasi Gemini Client
+    window.getGeminiClient = function() {
+      const currentUser = JSON.parse(localStorage.getItem('tracker_user')) || null;
+      const apiKey = (currentUser && currentUser.apiKey) ? currentUser.apiKey : localStorage.getItem('gemini_api_key');
+      if (!apiKey) {
+        if (typeof window.showToast === 'function') {
+          window.showToast("API Key Belum Ada", "Masukan Gemini API Key kamu di menu Profil/Sign In untuk menggunakan AI.", "🔑");
+        }
+        if (typeof window.openAuthModal === 'function') {
+          window.openAuthModal();
+        }
+        return null;
+      }
+      return new GoogleGenAI({ apiKey: apiKey });
+    };
+
+    // Chatbot AI Interactive Function
+    window.sendAIMessage = async function() {
+      const input = document.getElementById('aiChatInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const chatContainer = document.getElementById('aiChatMessages');
+      
+      // Render User Message
+      const userMsg = document.createElement('div');
+      userMsg.className = 'msg-bubble msg-user';
+      userMsg.innerText = text;
+      chatContainer.appendChild(userMsg);
+      input.value = '';
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+
+      // Placeholder Response
+      const aiMsg = document.createElement('div');
+      aiMsg.className = 'msg-bubble msg-ai';
+      aiMsg.innerText = 'Sedang berpikir...';
+      chatContainer.appendChild(aiMsg);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+
+      const ai = window.getGeminiClient();
+      if (!ai) {
+        aiMsg.innerText = 'Gagal memproses. Harap masukkan Gemini API Key di menu Profil.';
+        return;
+      }
+
+      try {
+        const response = await ai.models.generateContent({
+          model: 'gemini-1.5-flash',
+          contents: text,
+          config: {
+            systemInstruction: "Kamu adalah asisten belajar ramah dan pintar untuk seorang siswa SMA. Jawab pertanyaan seputar materi pelajaran secara jelas, ringkas, dan mudah dipahami."
+          }
+        });
+        aiMsg.innerText = response.text;
+      } catch (err) {
+        aiMsg.innerText = "Error menghubungkan ke Gemini API: " + err.message;
+      }
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    };
+
+    // Real AI Quiz Generator Function
+    window.openAIQuiz = async function() {
+      const modal = document.getElementById('aiModal');
+      const content = document.getElementById('aiQuizContent');
+      modal.style.display = 'flex';
+
+      const groupsData = JSON.parse(localStorage.getItem('tracker_groups')) || [];
+      const allTopics = groupsData.flatMap(g => g.topics);
+      if (allTopics.length === 0) {
+        content.innerHTML = "Belum ada topik yang dimasukkan. Tambahkan topik di mata pelajaran kamu terlebih dahulu!";
+        return;
+      }
+
+      content.innerHTML = "✨ <i>Gemini sedang membuatkan kuis khusus dari topik kamu...</i>";
+
+      const ai = window.getGeminiClient();
+      if (!ai) {
+        content.innerHTML = "Silakan masukkan Gemini API Key kamu di menu Profil/Sign In untuk menggunakan fitur Kuis AI ini.";
+        return;
+      }
+
+      const randomTopic = allTopics[Math.floor(Math.random() * allTopics.length)].title;
+
+      try {
+        const prompt = `Buatkan 2 soal kuis latihan singkat beserta kunci jawabannya untuk topik pelajaran SMA: "${randomTopic}". Format teks rapi dan ringkas.`;
+        const response = await ai.models.generateContent({
+          model: 'gemini-1.5-flash',
+          contents: prompt
+        });
+        content.innerHTML = `<strong>Topik: ${randomTopic}</strong><br><br>` + response.text.replace(/\n/g, '<br>');
+      } catch (err) {
+        content.innerHTML = "Gagal membuat kuis AI: " + err.message;
+      }
+    };
+  </script>
+
+  <!-- Main Classic Script -->
+  <script>
+    let currentUser = JSON.parse(localStorage.getItem('tracker_user')) || null;
+
+    let groups = JSON.parse(localStorage.getItem('tracker_groups')) || [
+      {
+        id: '1',
+        title: 'Sejarah',
+        examDate: '2026-10-15',
+        manualPercent: null,
+        files: [],
+        topics: [
+          { id: 't1', title: 'Masa Pendudukan Jepang', status: 'Mastered', diff: 'hard' },
+          { id: 't2', title: 'Sidang PPKI & Pembentukan Departemen', status: 'Learning', diff: 'medium' }
+        ]
+      },
+      {
+        id: '2',
+        title: 'Informatika',
+        examDate: '2026-11-01',
+        manualPercent: null,
+        files: [],
+        topics: [
+          { id: 't3', title: 'Algoritma Pemrograman', status: 'Mastered', diff: 'easy' },
+          { id: 't4', title: 'Struktur Data', status: 'Reviewing', diff: 'hard' }
+        ]
+      }
+    ];
+
+    let activeGroupId = null;
+
+    /* Pomodoro Timer States */
+    let pomoInterval = null;
+    let customPomoMinutes = 25;
+    let pomoSeconds = customPomoMinutes * 60;
+
+    function save() {
+      try {
+        localStorage.setItem('tracker_groups', JSON.stringify(groups));
+      } catch (e) {
+        showToast("⚠️ Penyimpanan Penuh", "Hapus beberapa foto besar agar bisa menyimpan data baru.", "⚠️");
+      }
+    }
+
+    function showToast(title, description, icon = "🔔") {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = 'toast-pop';
+
+      toast.innerHTML = `
+        <div class="toast-icon">${icon}</div>
+        <div class="toast-body">
+          <div class="toast-title">${title}</div>
+          <div class="toast-desc">${description}</div>
+        </div>
+        <button class="toast-close" onclick="this.parentElement.remove()">✕</button>
+      `;
+
+      container.appendChild(toast);
+      setTimeout(() => toast.classList.add('show'), 50);
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 400);
+      }, 4500);
+    }
+
+    function getStreakData() {
+      return JSON.parse(localStorage.getItem('tracker_streak')) || { count: 0, lastDate: null };
+    }
+
+    function updateStreakDisplay() {
+      const streakData = getStreakData();
+      document.getElementById('streakDisplay').innerText = `${streakData.count} Hari`;
+    }
+
+    function checkAndIncreaseStreak(durationMinutes) {
+      if (durationMinutes < 25) {
+        showToast("Sesi Selesai", `Sesi fokus ${durationMinutes} menit selesai! Capai 25 menit untuk menambah streak.`, "⏱️");
+        return;
+      }
+
+      const today = new Date().toISOString().split('T')[0];
+      let streakData = getStreakData();
+
+      if (streakData.lastDate === today) {
+        showToast("Target Hari Ini Tercapai!", "Kamu sudah menaikkan streak hari ini. Tetap pertahankan konsistensi!", "🔥");
+        return;
+      }
+
+      const yesterdayDate = new Date();
+      yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+      const yesterday = yesterdayDate.toISOString().split('T')[0];
+
+      if (streakData.lastDate === yesterday) {
+        streakData.count += 1;
+      } else {
+        streakData.count = 1;
+      }
+
+      streakData.lastDate = today;
+      localStorage.setItem('tracker_streak', JSON.stringify(streakData));
+      updateStreakDisplay();
+
+      showToast("🔥 STREAK BERSEMBUR!", `Hebat! Belajar 25+ menit tercapai. Streak kamu naik menjadi ${streakData.count} Hari!`, "🎉");
+    }
+
+    function updateTimerUI() {
+      const m = Math.floor(pomoSeconds / 60).toString().padStart(2, '0');
+      const s = (pomoSeconds % 60).toString().padStart(2, '0');
+      document.getElementById('pomoTimer').innerText = `${m}:${s}`;
+    }
+
+    function togglePomodoro() {
+      const btn = document.getElementById('pomoBtn');
+      if (pomoInterval) {
+        clearInterval(pomoInterval);
+        pomoInterval = null;
+        btn.innerText = 'Start';
+      } else {
+        btn.innerText = 'Pause';
+        pomoInterval = setInterval(() => {
+          pomoSeconds--;
+          updateTimerUI();
+
+          if (pomoSeconds <= 0) {
+            clearInterval(pomoInterval);
+            pomoInterval = null;
+            btn.innerText = 'Start';
+            checkAndIncreaseStreak(customPomoMinutes);
+            pomoSeconds = customPomoMinutes * 60;
+            updateTimerUI();
+          }
+        }, 1000);
+      }
+    }
+
+    function resetPomodoro() {
+      if (pomoInterval) {
+        clearInterval(pomoInterval);
+        pomoInterval = null;
+        document.getElementById('pomoBtn').innerText = 'Start';
+      }
+      pomoSeconds = customPomoMinutes * 60;
+      updateTimerUI();
+      showToast("Timer Di-reset", `Waktu dikembalikan ke ${customPomoMinutes} menit.`, "🔄");
+    }
+
+    function customizePomodoroTime() {
+      const input = prompt("Masukkan durasi sesi fokus baru (dalam menit):", customPomoMinutes);
+      if (input !== null) {
+        const mins = parseInt(input, 10);
+        if (!isNaN(mins) && mins > 0 && mins <= 180) {
+          customPomoMinutes = mins;
+          resetPomodoro();
+          if (mins < 25) {
+            showToast("Catatan Waktu", "Set durasi min. 25 menit jika ingin menaikkan streak harian.", "💡");
+          }
+        } else {
+          showToast("Input Tidak Valid", "Masukkan angka durasi menit antara 1 - 180.", "⚠️");
+        }
+      }
+    }
+
+    function toggleAIChat() {
+      const chatBox = document.getElementById('aiChatBox');
+      chatBox.style.display = chatBox.style.display === 'flex' ? 'none' : 'flex';
+    }
+
+    function updateAuthUI() {
+      const avatar = document.getElementById('userAvatar');
+      const nameText = document.getElementById('userNameText');
+      const logoutBtn = document.getElementById('logoutBtn');
+
+      if (currentUser && currentUser.name) {
+        avatar.innerText = currentUser.name.charAt(0).toUpperCase();
+        nameText.innerText = currentUser.name;
+        logoutBtn.style.display = 'block';
+      } else {
+        avatar.innerText = '?';
+        nameText.innerText = 'Sign In';
+        logoutBtn.style.display = 'none';
+      }
+    }
+
+    function openAuthModal() {
+      if (currentUser) {
+        document.getElementById('authNameInput').value = currentUser.name || '';
+        document.getElementById('authEmailInput').value = currentUser.email || '';
+        document.getElementById('authApiKeyInput').value = currentUser.apiKey || '';
+      }
+      document.getElementById('authModal').style.display = 'flex';
+    }
+
+    function closeAuthModal() {
+      document.getElementById('authModal').style.display = 'none';
+    }
+
+    function handleSignIn() {
+      const name = document.getElementById('authNameInput').value.trim();
+      const email = document.getElementById('authEmailInput').value.trim();
+      const apiKey = document.getElementById('authApiKeyInput').value.trim();
+
+      if (!name) {
+        showToast("Perhatian", "Silakan masukkan nama Anda!", "⚠️");
+        return;
+      }
+
+      currentUser = { name, email, apiKey };
+      localStorage.setItem('tracker_user', JSON.stringify(currentUser));
+      if (apiKey) localStorage.setItem('gemini_api_key', apiKey);
+
+      updateAuthUI();
+      closeAuthModal();
+      showToast("Profil Disimpan", `Profil dan Gemini API Key berhasil disimpan!`, "👋");
+    }
+
+    function handleSignOut() {
+      if (confirm('Keluar dari profil ini?')) {
+        currentUser = null;
+        localStorage.removeItem('tracker_user');
+        localStorage.removeItem('gemini_api_key');
+        document.getElementById('authNameInput').value = '';
+        document.getElementById('authEmailInput').value = '';
+        document.getElementById('authApiKeyInput').value = '';
+        updateAuthUI();
+        closeAuthModal();
+        showToast("Signed Out", "Anda telah keluar dari akun.", "ℹ️");
+      }
+    }
+
+    function calculateDaysLeft(dateStr) {
+      if (!dateStr) return null;
+      const diff = new Date(dateStr) - new Date();
+      const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+      return days > 0 ? `${days} hari lagi` : (days === 0 ? 'Hari ini!' : 'Selesai');
+    }
+
+    function renderDashboard() {
+      const grid = document.getElementById('groupGrid');
+      const searchQuery = document.getElementById('searchInput').value.toLowerCase();
+      grid.innerHTML = '';
+
+      const filtered = groups.filter(g => 
+        g.title.toLowerCase().includes(searchQuery) ||
+        g.topics.some(t => t.title.toLowerCase().includes(searchQuery))
+      );
+
+      filtered.forEach(group => {
+        const total = group.topics.length;
+        const mastered = group.topics.filter(t => t.status === 'Mastered').length;
+        
+        let percent = (group.manualPercent !== undefined && group.manualPercent !== null)
+          ? group.manualPercent 
+          : (total > 0 ? Math.round((mastered / total) * 100) : 0);
+
+        const daysLeft = calculateDaysLeft(group.examDate);
+        const fileCount = group.files ? group.files.length : 0;
+
+        const card = document.createElement('div');
+        card.className = 'group-card';
+        card.onclick = () => openGroupDetail(group.id);
+
+        card.innerHTML = `
+          <div>
+            <div class="group-card-header">
+              <div>
+                <div class="group-title">${group.title}</div>
+                <div class="group-stats-text">${total} Topik • ${mastered} Dikuasai ${fileCount > 0 ? `• 📁 ${fileCount} File` : ''}</div>
+                ${daysLeft ? `<div class="exam-badge">🎯 Target Ujian: ${daysLeft}</div>` : ''}
+              </div>
+              <div class="card-actions" onclick="event.stopPropagation()">
+                <button class="icon-btn" onclick="setExamDate('${group.id}')" title="Atur Tanggal Ujian">📅</button>
+                <button class="icon-btn" onclick="deleteGroup('${group.id}')" title="Hapus">✕</button>
+              </div>
+            </div>
+          </div>
+          <div class="progress-container" onclick="event.stopPropagation()">
+            <div class="progress-info">
+              <span>Penguasaan <span class="progress-hint">(Swipe/Geser bar)</span></span>
+              <span id="percent-text-${group.id}">${percent}%</span>
+            </div>
+            <div class="progress-bar-bg" id="bar-${group.id}">
+              <div class="progress-bar-fill" id="fill-${group.id}" style="width: ${percent}%"></div>
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+
+        setTimeout(() => attachSwipeProgressBar(group.id), 0);
+      });
+    }
+
+    function attachSwipeProgressBar(groupId) {
+      const bar = document.getElementById(`bar-${groupId}`);
+      const fill = document.getElementById(`fill-${groupId}`);
+      const text = document.getElementById(`percent-text-${groupId}`);
+      if (!bar) return;
+
+      let isDragging = false;
+
+      const updateProgressFromEvent = (e) => {
+        const rect = bar.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        let offsetX = clientX - rect.left;
+        let newPercent = Math.round((offsetX / rect.width) * 100);
+        newPercent = Math.max(0, Math.min(100, newPercent));
+
+        fill.style.width = newPercent + '%';
+        text.innerText = newPercent + '%';
+
+        const group = groups.find(g => g.id === groupId);
+        if (group) {
+          group.manualPercent = newPercent;
+          save();
+        }
+      };
+
+      bar.addEventListener('mousedown', (e) => { isDragging = true; updateProgressFromEvent(e); });
+      window.addEventListener('mousemove', (e) => { if (isDragging) updateProgressFromEvent(e); });
+      window.addEventListener('mouseup', () => { isDragging = false; });
+
+      bar.addEventListener('touchstart', (e) => { isDragging = true; updateProgressFromEvent(e); }, { passive: true });
+      bar.addEventListener('touchmove', (e) => { if (isDragging) updateProgressFromEvent(e); }, { passive: true });
+      bar.addEventListener('touchend', () => { isDragging = false; });
+    }
+
+    function addNewGroup() {
+      const name = prompt('Masukkan nama Mata Pelajaran / Group baru:');
+      if (name && name.trim()) {
+        groups.push({
+          id: Date.now().toString(),
+          title: name.trim(),
+          examDate: null,
+          manualPercent: 0,
+          files: [],
+          topics: []
+        });
+        save();
+        renderDashboard();
+        showToast("Group Dibuat", `Mata pelajaran "${name.trim()}" berhasil ditambahkan!`, "📚");
+      }
+    }
+
+    function setExamDate(groupId) {
+      const group = groups.find(g => g.id === groupId);
+      const date = prompt('Masukkan tanggal ujian (Format: YYYY-MM-DD):', group.examDate || '');
+      if (date !== null) {
+        group.examDate = date;
+        save();
+        renderDashboard();
+        showToast("Jadwal Disimpan", "Tanggal target ujian telah diperbarui.", "📅");
+      }
+    }
+
+    function deleteGroup(id) {
+      if (confirm('Apakah Anda yakin ingin menghapus group ini?')) {
+        groups = groups.filter(g => g.id !== id);
+        save();
+        renderDashboard();
+        showToast("Group Dihapus", "Mata pelajaran telah dihapus.", "🗑️");
+      }
+    }
+
+    function openGroupDetail(groupId) {
+      activeGroupId = groupId;
+      document.getElementById('dashboardView').style.display = 'none';
+      document.getElementById('detailView').style.display = 'block';
+      renderDetail();
+    }
+
+    function showDashboard() {
+      activeGroupId = null;
+      document.getElementById('detailView').style.display = 'none';
+      document.getElementById('dashboardView').style.display = 'block';
+      renderDashboard();
+    }
+
+    function renderDetail() {
+      const group = groups.find(g => g.id === activeGroupId);
+      if (!group) return showDashboard();
+
+      if (!group.files) group.files = [];
+
+      document.getElementById('detailGroupTitle').innerText = group.title;
+      const days = calculateDaysLeft(group.examDate);
+      document.getElementById('examDateDisplay').innerText = group.examDate 
+        ? `🎯 Ujian: ${group.examDate} (${days})` 
+        : '🎯 Ujian: Belum diatur';
+
+      renderFiles(group);
+
+      const topicList = document.getElementById('topicList');
+      topicList.innerHTML = '';
+
+      group.topics.forEach(topic => {
+        const item = document.createElement('div');
+        item.className = 'topic-item';
+
+        let statusClass = 'status-learning';
+        if (topic.status === 'Reviewing') statusClass = 'status-reviewing';
+        if (topic.status === 'Mastered') statusClass = 'status-mastered';
+
+        let diffClass = 'diff-medium';
+        let diffText = 'Sedang';
+        if (topic.diff === 'easy') { diffClass = 'diff-easy'; diffText = 'Mudah'; }
+        if (topic.diff === 'hard') { diffClass = 'diff-hard'; diffText = 'Sangat Sulit'; }
+
+        item.innerHTML = `
+          <div class="topic-left">
+            <span>${topic.title}</span>
+            <span class="diff-badge ${diffClass}">${diffText}</span>
+          </div>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <span class="topic-status ${statusClass}" onclick="cycleStatus('${topic.id}')">${topic.status}</span>
+            <button class="icon-btn" onclick="deleteTopic('${topic.id}')">✕</button>
+          </div>
+        `;
+        topicList.appendChild(item);
+      });
+    }
+
+    function handleFileUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const group = groups.find(g => g.id === activeGroupId);
+        if (group) {
+          if (!group.files) group.files = [];
+          group.files.push({
+            id: Date.now().toString(),
+            name: file.name,
+            type: file.type,
+            data: evt.target.result
+          });
+          save();
+          renderFiles(group);
+          showToast("File Terunggah", `Lampiran "${file.name}" berhasil disimpan.`, "📷");
+        }
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    }
+
+    function renderFiles(group) {
+      const grid = document.getElementById('fileGrid');
+      grid.innerHTML = '';
+
+      if (!group.files || group.files.length === 0) {
+        grid.innerHTML = `<span style="font-size:0.8rem; color:var(--text-muted); grid-column: 1/-1;">Belum ada foto/soal diunggah.</span>`;
+        return;
+      }
+
+      group.files.forEach(f => {
+        const isImage = f.type.startsWith('image/');
+        const card = document.createElement('div');
+        card.className = 'file-card';
+
+        let previewHtml = isImage 
+          ? `<img src="${f.data}" class="file-thumb" onclick="openFilePreview('${f.id}')" title="Klik untuk lihat foto">`
+          : `<div class="file-icon" onclick="openFilePreview('${f.id}')" title="Klik untuk buka file">📄</div>`;
+
+        card.innerHTML = `
+          <button class="file-del" onclick="deleteFile('${f.id}')" title="Hapus file">✕</button>
+          ${previewHtml}
+          <div class="file-name" title="${f.name}">${f.name}</div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function openFilePreview(fileId) {
+      const group = groups.find(g => g.id === activeGroupId);
+      const file = group.files.find(f => f.id === fileId);
+      if (file) {
+        const w = window.open("");
+        if (file.type.startsWith('image/')) {
+          w.document.write(`<body style="margin:0; background:#0f172a; display:flex; justify-content:center; align-items:center; min-height:100vh;"><img src="${file.data}" style="max-width:95vw; max-height:95vh; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.5);"></body>`);
+        } else {
+          w.document.write(`<iframe src="${file.data}" frameborder="0" style="width:100vw; height:100vh;"></iframe>`);
+        }
+      }
+    }
+
+    function deleteFile(fileId) {
+      if (confirm('Hapus file ini?')) {
+        const group = groups.find(g => g.id === activeGroupId);
+        group.files = group.files.filter(f => f.id !== fileId);
+        save();
+        renderFiles(group);
+        showToast("File Dihapus", "Lampiran berhasil dihapus.", "🗑️");
+      }
+    }
+
+    function addTopic() {
+      const input = document.getElementById('newTopicInput');
+      const diffSelect = document.getElementById('newTopicDiff');
+      const title = input.value.trim();
+      if (title && activeGroupId) {
+        const group = groups.find(g => g.id === activeGroupId);
+        group.topics.push({
+          id: Date.now().toString(),
+          title: title,
+          status: 'Learning',
+          diff: diffSelect.value
+        });
+        group.manualPercent = null;
+        input.value = '';
+        save();
+        renderDetail();
+        showToast("Topik Ditambahkan", `Topik "${title}" berhasil masuk ke daftar.`, "📝");
+      }
+    }
+
+    function cycleStatus(topicId) {
+      const group = groups.find(g => g.id === activeGroupId);
+      const topic = group.topics.find(t => t.id === topicId);
+      const statuses = ['Learning', 'Reviewing', 'Mastered'];
+      const nextIndex = (statuses.indexOf(topic.status) + 1) % statuses.length;
+      topic.status = statuses[nextIndex];
+      group.manualPercent = null;
+      save();
+      renderDetail();
+    }
+
+    function deleteTopic(topicId) {
+      const group = groups.find(g => g.id === activeGroupId);
+      group.topics = group.topics.filter(t => t.id !== topicId);
+      group.manualPercent = null;
+      save();
+      renderDetail();
+    }
+
+    function closeAIModal() {
+      document.getElementById('aiModal').style.display = 'none';
+    }
+
+    function exportData() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(groups, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `exam_topics_backup.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast("Data Diekspor", "File cadangan exam_topics_backup.json diunduh.", "💾");
+    }
+
+    document.getElementById('toggleTheme').onclick = () => {
+      document.body.classList.toggle('light-mode');
+    };
+
+    updateAuthUI();
+    updateStreakDisplay();
+    renderDashboard();
+    updateTimerUI();
+  </script>
+
+  <!-- Service Worker Registration Script (PWA) -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./pwabuilder-sw.js')
+          .then(reg => console.log('Service Worker registered successfully:', reg.scope))
+          .catch(err => console.error('Service Worker registration failed:', err));
+      });
+    }
+  </script>
+</body>
+</html>
