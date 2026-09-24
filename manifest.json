@@ -1,0 +1,26 @@
+{
+  "name": "Exam Topic Tracker",
+  "short_name": "Exam Tracker",
+  "description": "Track your exam topics, progress, and review materials with integrated AI Assistant.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f6f7fb",
+  "theme_color": "#4f6df5",
+  "id": "com.r00p1nders1ngh.examtracker",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
